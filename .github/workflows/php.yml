@@ -22,7 +22,7 @@ on:
       publish: {description: "Publish a release (off: build and test only)", type: boolean, default: true}
       update_lock: {description: "Write a new sources.lock.json instead of checking it (never publishes)", type: boolean, default: false}
   pull_request:
-    paths: ["scripts/build-php.sh", "scripts/smoke-php.sh", "scripts/fcgi_get.py", "scripts/check-spc-lock.py", "scripts/package.sh", "sources.json", "php/**", ".github/workflows/php.yml", ".github/scripts/**"]
+    paths: ["scripts/build-php.sh", "scripts/smoke-php.sh", "scripts/fcgi_get.py", "scripts/check-spc-lock.py", "scripts/merge-locks.py", "scripts/package.sh", "sources.json", "php/**", ".github/workflows/php.yml", ".github/scripts/**"]
 
 permissions:
   contents: read
@@ -97,6 +97,12 @@ jobs:
           name: php-${{ matrix.platform }}
           path: out/*
           if-no-files-found: error
+      - name: Show the new sources lock
+        if: always() && env.LOCK_MODE == 'update'
+        run: |
+          echo "----- sources.lock.json -----"
+          cat dist/sources.lock.json 2>/dev/null || echo "(none written)"
+          echo "----- end -----"
       - name: Keep the new sources lock
         if: always() && env.LOCK_MODE == 'update'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -104,6 +110,47 @@ jobs:
           name: sources-lock-${{ matrix.platform }}
           path: dist/sources.lock.json
           if-no-files-found: ignore
+
+  # update_lock: the new lock as a pull request, for a person to review and
+  # merge before PHP is built for real.
+  lock-pr:
+    if: github.event_name == 'workflow_dispatch' && needs.matrix.outputs.lock_mode == 'update'
+    needs: [matrix, build]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with: {path: locks, pattern: "sources-lock-*"}
+      - name: Open a pull request with the new lock
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python3 scripts/merge-locks.py php/sources.lock.json locks/*/sources.lock.json
+          if git diff --quiet php/sources.lock.json; then
+            echo "The lock already matches this build's sources."
+            exit 0
+          fi
+          BRANCH="php-sources-lock-$V-${{ github.run_id }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add php/sources.lock.json
+          git commit -m "PHP sources lock for $V ($PLATFORMS)"
+          git push origin "$BRANCH"
+          {
+            echo "The sources static-php-cli downloaded for PHP $V ($PLATFORMS), from $RUN_URL."
+            echo
+            echo "Review the changed names and hashes before merging: they are what goes into FloServer's PHP."
+            echo
+            echo '```diff'
+            git diff HEAD~1 -- php/sources.lock.json | tail -n +5
+            echo '```'
+          } > body.md
+          gh pr create --base main --head "$BRANCH" --title "PHP sources lock for $V" --body-file body.md
 
   release:
     if: github.event_name == 'workflow_dispatch' && inputs.publish && needs.matrix.outputs.lock_mode == 'check'
