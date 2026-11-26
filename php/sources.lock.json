@@ -204,7 +204,7 @@
     "redis": {
       "type": "archive",
       "name": "redis.tgz",
-      "sha256": "876434dff29603c83e33cb69bbcfdcff1f7846d968a396436b6c026cc15fc492"
+      "sha256": "0d5141f634bd1db6c1ddcda053d25ecf2c4fc1c395430d534fd3f8d51dd7f0b5"
     },
     "sqlite": {
       "type": "archive",
