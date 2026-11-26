@@ -31,6 +31,13 @@ printf '%s\n' "$MODS" | grep -qx "zend opcache" || fail "opcache is missing"
 for so in $(grep -v '^#' "$ROOT/php/shared-extensions.txt"); do
   [ -f "$DIR/ext/$so.so" ] || fail "ext/$so.so missing"
 done
+# Only stable releases (no alpha, beta or RC) of the .so extensions.
+for so in $(grep -v '^#' "$ROOT/php/shared-extensions.txt"); do
+  load="-d extension=$DIR/ext/$so.so"; [ "$so" = xdebug ] && load="-d zend_extension=$DIR/ext/$so.so"
+  ver=$("$PHP" -n $load -r "echo phpversion('$so');")
+  [[ "$ver" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "$so $ver isn't a stable release (pin one in php/pinned-sources.txt)"
+  echo "$so $ver"
+done
 "$PHP" -n -d extension_dir="$DIR/ext" -d extension=redis -r 'exit(extension_loaded("redis") ? 0 : 1);' || fail "redis.so doesn't load"
 XD=$("$PHP" -n -d zend_extension="$DIR/ext/xdebug.so" -r 'echo extension_loaded("xdebug") ? "yes" : "no";')
 [ "$XD" = yes ] || fail "xdebug.so doesn't load"
