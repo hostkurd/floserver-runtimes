@@ -3,6 +3,12 @@ name: php
 # Builds PHP (cli + cgi) for FloServer with static-php-cli and publishes it as
 # a GitHub Release (tag php-<version>-<build>). The Publisher's Updates
 # window picks the release up from here (D36.3).
+#
+# Every source static-php-cli downloads is checked against
+# php/sources.lock.json (scripts/check-spc-lock.py); php-src against php.net.
+# When a library has a new release the check fails: run this workflow with
+# "update_lock", review the sources.lock.json it uploads, and commit it in a
+# pull request. A run with update_lock never publishes.
 on:
   workflow_dispatch:
     inputs:
@@ -14,21 +20,38 @@ on:
         options: [linux-x64, macos-arm64, both]
         default: linux-x64
       publish: {description: "Publish a release (off: build and test only)", type: boolean, default: true}
+      update_lock: {description: "Write a new sources.lock.json instead of checking it (never publishes)", type: boolean, default: false}
   pull_request:
-    paths: ["scripts/build-php.sh", "scripts/smoke-php.sh", "scripts/fcgi_get.py", "scripts/package.sh", "php/**", ".github/workflows/php.yml"]
+    paths: ["scripts/build-php.sh", "scripts/smoke-php.sh", "scripts/fcgi_get.py", "scripts/check-spc-lock.py", "scripts/package.sh", "sources.json", "php/**", ".github/workflows/php.yml", ".github/scripts/**"]
 
 permissions:
   contents: read
+
+env:
+  V: ${{ inputs.version || '8.5.12' }}
+  BUILD: ${{ inputs.build || '1' }}
+  PLATFORMS: ${{ inputs.platforms || 'linux-x64' }}
+  # The matrix job turns this into "update" while the lock is still empty
+  # (the first build): an empty lock can only be written, not checked.
+  LOCK_MODE: ${{ inputs.update_lock && 'update' || 'check' }}
 
 jobs:
   matrix:
     runs-on: ubuntu-24.04
     outputs:
       matrix: ${{ steps.m.outputs.matrix }}
+      lock_mode: ${{ steps.m.outputs.lock_mode }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - id: m
-        run: echo "matrix=$(.github/scripts/matrix.sh '${{ inputs.platforms || 'linux-x64' }}')" >> "$GITHUB_OUTPUT"
+        run: |
+          .github/scripts/check-inputs.sh version "$V" build "$BUILD"
+          echo "matrix=$(.github/scripts/matrix.sh "$PLATFORMS")" >> "$GITHUB_OUTPUT"
+          mode=$LOCK_MODE
+          if [ "$(python3 -c 'import json;print(len(json.load(open("php/sources.lock.json"))["sources"]))')" = 0 ]; then mode=update; fi
+          echo "lock_mode=$mode" >> "$GITHUB_OUTPUT"
 
   build:
     needs: matrix
@@ -36,66 +59,81 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJSON(needs.matrix.outputs.matrix) }}
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 180
+    timeout-minutes: 240
     env:
-      V: ${{ inputs.version || '8.5.12' }}
-      # static-php-cli downloads its sources from GitHub with this token
+      PLATFORM: ${{ matrix.platform }}
+      LOCK_MODE: ${{ needs.matrix.outputs.lock_mode }}
+      # static-php-cli asks GitHub for its sources' releases with this token
       # (fewer rate-limit failures).
       GITHUB_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - name: Set up PHP and Composer (macOS)
         if: startsWith(matrix.platform, 'macos-')
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
         with:
           php-version: "8.4"
           tools: composer
           extensions: curl, openssl, mbstring, tokenizer, zlib
           ini-values: memory_limit=-1
       - name: Build
-        run: scripts/build-php.sh "$V" "${{ matrix.platform }}" dist
+        run: scripts/build-php.sh "$V" "$PLATFORM" dist
       - name: Show the build log on failure
         if: failure()
         run: |
           for f in dist/.spc/log/*.log; do
             [ -f "$f" ] || continue
-            tail -40 "$f" | while IFS= read -r line; do echo "::error title=$(basename "$f")::${line}"; done
+            # "::" taken out, so a log line can't act as a workflow command.
+            tail -40 "$f" | sed 's/::/: :/g' | while IFS= read -r line; do echo "::error title=$(basename "$f")::${line}"; done
           done
       - name: Smoke test
-        run: scripts/smoke-php.sh "dist/php-$V"
+        run: scripts/smoke-php.sh "dist/php-$V" "$V"
       - name: Package
-        run: scripts/package.sh "dist/php-$V" "${{ matrix.platform }}" out
-      - uses: actions/upload-artifact@v4
+        run: scripts/package.sh "dist/php-$V" "$PLATFORM" out
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: php-${{ matrix.platform }}
           path: out/*
           if-no-files-found: error
+      - name: Keep the new sources lock
+        if: always() && env.LOCK_MODE == 'update'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sources-lock-${{ matrix.platform }}
+          path: dist/sources.lock.json
+          if-no-files-found: ignore
 
   release:
-    if: github.event_name == 'workflow_dispatch' && inputs.publish
-    needs: build
+    if: github.event_name == 'workflow_dispatch' && inputs.publish && needs.matrix.outputs.lock_mode == 'check'
+    needs: [matrix, build]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with: {path: out, merge-multiple: true}
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with: {path: out, pattern: "php-*", merge-multiple: true}
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: php-${{ inputs.version }}-${{ inputs.build }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
+          TAG="php-$V-$BUILD"
+          SPC=$(python3 -c 'import json;d=json.load(open("sources.json"))["static-php-cli"];print(d["version"], d["commit"])')
           {
-            echo "PHP ${{ inputs.version }} (NTS, cli + cgi) for FloServer, build ${{ inputs.build }}."
+            echo "PHP $V (NTS, cli + cgi) for FloServer, build $BUILD."
             echo
             echo "Built in: $(grep -v '^#' php/extensions.txt | tr -s ' \n' ' ')"
             echo "Shared (ext/): $(grep -v '^#' php/shared-extensions.txt | tr -s ' \n' ' ')"
             echo
-            echo "Built with static-php-cli $(python3 -c 'import json;d=json.load(open("sources.json"))["static-php-cli"];v=sorted(d)[-1];print(v, d[v]["commit"])') by workflow run ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }} from commit ${{ github.sha }}."
+            echo "Built with static-php-cli $SPC, every source checked against php/sources.lock.json at $GITHUB_SHA, by workflow run $RUN_URL."
             echo
             echo '```'
             cat out/*.sha256
             echo '```'
           } > notes.md
-          gh release create "$TAG" out/* --title "PHP ${{ inputs.version }} (build ${{ inputs.build }})" --notes-file notes.md --target "${{ github.sha }}"
+          gh release create "$TAG" out/* --repo "$GITHUB_REPOSITORY" --title "PHP $V (build $BUILD)" --notes-file notes.md --target "$GITHUB_SHA"

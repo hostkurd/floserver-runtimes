@@ -26,7 +26,10 @@ while True:
     _, kind, _, length, pad = struct.unpack("!BBHHBx", head)
     body = b""
     while len(body) < length + pad:
-        body += s.recv(length + pad - len(body))
+        more = s.recv(length + pad - len(body))
+        if not more:
+            sys.exit("connection closed in the middle of a record")
+        body += more
     if kind == 6:
         out += body[:length]
     if kind == 3:

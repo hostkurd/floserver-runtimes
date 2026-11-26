@@ -23,8 +23,15 @@ PHP=$1 PLATFORM=$2 OUT=$3
 HERE=$(cd "$(dirname "$0")" && pwd)
 ROOT=$(cd "$HERE/.." && pwd)
 mkdir -p "$OUT"; OUT=$(cd "$OUT" && pwd)
-SPC_VERSION=$(python3 -c 'import json;d=json.load(open("'"$ROOT"'/sources.json"))["static-php-cli"];print(sorted(d)[-1])')
-SPC_COMMIT=$(python3 -c 'import json;print(json.load(open("'"$ROOT"'/sources.json"))["static-php-cli"]["'"$SPC_VERSION"'"]["commit"])')
+case "$PHP" in
+  [0-9]*.[0-9]*.[0-9]*) ;;
+  *) echo "PHP version must be x.y.z, not $PHP" >&2; exit 2 ;;
+esac
+SPC_VERSION=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["static-php-cli"]["version"])' "$ROOT/sources.json")
+SPC_COMMIT=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["static-php-cli"]["commit"])' "$ROOT/sources.json")
+# check: every source must match php/sources.lock.json (the default);
+# update: write the lock for this build's sources to $OUT/sources.lock.json.
+LOCK_MODE=${LOCK_MODE:-check}
 STATIC=$(grep -v '^#' "$ROOT/php/extensions.txt" | tr -s ' \n' ',' | sed 's/^,//; s/,$//')
 SHARED=$(grep -v '^#' "$ROOT/php/shared-extensions.txt" | tr -s ' \n' ',' | sed 's/^,//; s/,$//')
 
@@ -50,11 +57,19 @@ case "$PLATFORM" in
   *) echo "unknown platform $PLATFORM" >&2; exit 2 ;;
 esac
 
-"${CMD[@]}" download --with-php="$PHP" --for-extensions="$STATIC,$SHARED" --prefer-pre-built --ignore-cache-sources=php-src
-# No php.ini or conf.d compiled in: FloServer always names its own php.ini,
-# and a stray /usr/local/etc/php from another install must never be read.
+# Sources only (no pre-built libraries: everything is compiled here), then
+# every downloaded file checked before anything is built from it.
+"${CMD[@]}" download --with-php="$PHP" --for-extensions="$STATIC,$SHARED" --ignore-cache-sources=php-src
+if [ "$LOCK_MODE" = update ]; then
+  python3 "$HERE/check-spc-lock.py" update "$SPC" "$PHP" "$OUT/sources.lock.json"
+else
+  python3 "$HERE/check-spc-lock.py" check "$SPC" "$PHP"
+fi
+# FloServer always names its own php.ini (-c). The compiled-in path is a
+# root-only folder nothing creates, and no conf.d is scanned, so a php.ini
+# left by another install is never read.
 "${CMD[@]}" build "$STATIC" --build-shared="$SHARED" --build-cli --build-cgi \
-  --with-config-file-path= --with-config-file-scan-dir=
+  --with-config-file-path=/etc/floserver-php-none --with-config-file-scan-dir=
 "${CMD[@]}" dump-license --for-extensions="$STATIC,$SHARED" --dump-dir=buildroot/floserver-licenses
 
 DEST="$OUT/php-$PHP"
@@ -77,6 +92,7 @@ json.dump({
     "built_in_extensions": sorted(sys.argv[2].split(",")),
     "shared_extensions": sorted(sys.argv[3].split(",")),
     "built_with": {"static-php-cli": "$SPC_VERSION ($SPC_COMMIT)"},
+    "sources_lock": json.load(open("$ROOT/php/sources.lock.json"))["sources"] if "$LOCK_MODE" == "check" else None,
     "source": "https://github.com/hostkurd/floserver-runtimes",
 }, open(sys.argv[1], "w"), indent=2)
 PY

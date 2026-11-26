@@ -17,6 +17,7 @@ if [ $# -ne 6 ]; then
 fi
 NGINX=$1 OPENSSL=$2 PCRE2=$3 ZLIB=$4 PLATFORM=$5 OUT=$6
 HERE=$(cd "$(dirname "$0")" && pwd)
+mkdir -p "$OUT"; OUT=$(cd "$OUT" && pwd)
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 
@@ -28,13 +29,28 @@ done
 SRC="$WORK/nginx-$NGINX"
 JOBS=$( (nproc || sysctl -n hw.ncpu) 2>/dev/null || echo 2)
 
+# OpenSSL first, on its own: its compiled-in folders (openssl.cnf, engines,
+# providers) are the system's /etc/ssl and a root-only path that nothing
+# creates, never this machine's temporary folder (any user could make that
+# on the user's computer and have nginx load code from it). Installed into
+# a staging folder with DESTDIR, linked statically.
+SSL_PREFIX=/usr/lib/floserver-openssl
+(
+  cd "$WORK/openssl-$OPENSSL"
+  ./config --prefix="$SSL_PREFIX" --openssldir=/etc/ssl --libdir=lib \
+    no-shared no-module no-dynamic-engine no-tests no-docs -fPIC
+  make -j"$JOBS" >/dev/null
+  make install_sw DESTDIR="$WORK/ssl-root" >/dev/null
+)
+SSL="$WORK/ssl-root$SSL_PREFIX"
+
 cd "$SRC"
 # --with-cc-opt / --with-ld-opt: hardening, as distributions build it.
-CC_OPT="-O2 -fstack-protector-strong -fPIE"
-LD_OPT=""
+CC_OPT="-O2 -fstack-protector-strong -fPIE -I$SSL/include"
+LD_OPT="-L$SSL/lib"
 EXTRA=()
 case "$PLATFORM" in
-  linux-*) CC_OPT="$CC_OPT -D_FORTIFY_SOURCE=2"; LD_OPT="-pie -Wl,-z,relro -Wl,-z,now"; EXTRA=(--with-file-aio) ;;
+  linux-*) CC_OPT="$CC_OPT -D_FORTIFY_SOURCE=2"; LD_OPT="$LD_OPT -pie -Wl,-z,relro -Wl,-z,now"; EXTRA=(--with-file-aio) ;;
   macos-*) ;;
   *) echo "unknown platform $PLATFORM" >&2; exit 2 ;;
 esac
@@ -60,8 +76,6 @@ esac
   --with-http_sub_module \
   --with-pcre="$WORK/pcre2-$PCRE2" --with-pcre-jit \
   --with-zlib="$WORK/zlib-$ZLIB" \
-  --with-openssl="$WORK/openssl-$OPENSSL" \
-  --with-openssl-opt="no-shared no-tests no-docs" \
   --with-cc-opt="$CC_OPT" \
   --with-ld-opt="$LD_OPT" \
   ${EXTRA[@]+"${EXTRA[@]}"}

@@ -1,0 +1,4 @@
+{
+  "_about": "SHA-256 of every source static-php-cli may use (scripts/check-spc-lock.py). Review changes before merging: they are what goes into FloServer's PHP.",
+  "sources": {}
+}

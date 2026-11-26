@@ -25,9 +25,8 @@
     }
   },
   "static-php-cli": {
-    "2.8.5": {
-      "git": "https://github.com/crazywhalecc/static-php-cli",
-      "commit": "4318ef8fa32a02460ec1554746674a7bc42b49fa"
-    }
+    "version": "2.8.5",
+    "git": "https://github.com/crazywhalecc/static-php-cli",
+    "commit": "4318ef8fa32a02460ec1554746674a7bc42b49fa"
   }
 }

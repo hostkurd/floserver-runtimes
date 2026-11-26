@@ -1,15 +1,21 @@
 #!/usr/bin/env bash
 # Checks a built nginx folder the way FloServer uses it: started with its own
-# -p and -c, serving a file over HTTPS with HTTP/2, then stopped.
-#   scripts/smoke-nginx.sh <nginx folder>
+# -p, -c and -e, serving a file over HTTPS with HTTP/2, then stopped.
+#   scripts/smoke-nginx.sh <nginx folder> <expected version>
 set -euo pipefail
-DIR=$(cd "$1" && pwd)
+DIR=$(cd "$1" && pwd); WANT=$2
 WORK=$(mktemp -d)
 cleanup() { [ -f "$WORK/nginx.pid" ] && kill "$(cat "$WORK/nginx.pid")" 2>/dev/null || true; rm -rf "$WORK"; }
 trap cleanup EXIT
 fail() { echo "::error title=nginx smoke test::$1"; [ -f "$WORK/logs/error.log" ] && tail -20 "$WORK/logs/error.log"; exit 1; }
 
-"$DIR/nginx" -V 2>&1 | grep -q "built with OpenSSL" || fail "nginx -V doesn't name OpenSSL"
+V=$("$DIR/nginx" -v 2>&1)
+[ "$V" = "nginx version: nginx/$WANT" ] || fail "nginx -v says: $V"
+INFO=$("$DIR/nginx" -V 2>&1)
+case "$INFO" in *"built with OpenSSL"*) ;; *) fail "nginx -V doesn't name OpenSSL" ;; esac
+# Nothing may point into the build machine's temporary folders.
+LEAKS=$(strings "$DIR/nginx" | grep -E '^/(tmp|private/var|var/folders|Users|home/runner)/' || true)
+[ -z "$LEAKS" ] || fail "build paths compiled in: $(echo "$LEAKS" | head -3 | tr '\n' ' ')"
 for f in mime.types fastcgi_params fastcgi.conf; do [ -f "$DIR/conf/$f" ] || fail "conf/$f missing"; done
 [ -f "$DIR/floserver-build.json" ] || fail "floserver-build.json missing"
 ls "$DIR/licenses/"* >/dev/null || fail "licenses missing"
@@ -42,11 +48,12 @@ http {
   }
 }
 CONF
-"$DIR/nginx" -p "$WORK/" -c "$WORK/nginx.conf" -t -q || fail "nginx -t refused the config"
-"$DIR/nginx" -p "$WORK/" -c "$WORK/nginx.conf"
+NG=("$DIR/nginx" -p "$WORK/" -c "$WORK/nginx.conf" -e "$WORK/logs/error.log")
+"${NG[@]}" -t -q || fail "nginx -t refused the config"
+"${NG[@]}"
 for _ in $(seq 50); do [ -f "$WORK/nginx.pid" ] && break; sleep 0.1; done
 OUT=$(curl -sS --http2 --cacert "$WORK/cert.pem" --resolve "smoke.localhost:$PORT:127.0.0.1" \
   -w ' %{http_version}' "https://smoke.localhost:$PORT/") || fail "curl failed"
 [ "$OUT" = "floserver smoke 2" ] || fail "unexpected answer: $OUT"
-"$DIR/nginx" -p "$WORK/" -c "$WORK/nginx.conf" -s stop
-echo "nginx smoke test passed: $("$DIR/nginx" -v 2>&1)"
+"${NG[@]}" -s stop
+echo "nginx smoke test passed: $V"
