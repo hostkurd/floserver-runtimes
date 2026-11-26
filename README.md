@@ -33,6 +33,20 @@ PHP is built with [static-php-cli](https://github.com/crazywhalecc/static-php-cl
 (the version pinned in `sources.json`): on Linux in its CentOS 7 container,
 so one build runs on every glibc distribution FloServer supports.
 
+static-php-cli downloads each library's newest release. Every file it
+downloads is checked against `php/sources.lock.json` (php-src against
+php.net's published SHA-256) before anything is built, so a library that
+changes stops the build. Then run the **php** workflow with *update_lock*:
+it opens a pull request with the new lock. Review the names and versions,
+merge it, and run the workflow again. `php/pinned-sources.txt` fixes a
+source to one address when the newest release isn't wanted (Xdebug, whose
+newest is a pre-release).
+
+Known gap: the build tools themselves (static-php-cli's CentOS 7 image and
+the compilers and PHP it installs into it, or Homebrew on macOS) come from
+their usual places without a pinned hash. They build the program but
+aren't part of it.
+
 ## Licences
 
 Each archive carries the licences of the program and of everything built

@@ -1,0 +1,2 @@
+# .so files in ext/, turned on per project in Settings -> PHP.
+xdebug redis pcov

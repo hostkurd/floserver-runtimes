@@ -1,0 +1,240 @@
+{
+  "_about": "SHA-256 of every source static-php-cli may use (scripts/check-spc-lock.py). Review changes before merging: they are what goes into FloServer's PHP.",
+  "sources": {
+    "apcu": {
+      "type": "archive",
+      "name": "apcu.tgz",
+      "sha256": "ca9c1820810a168786f8048a4c3f8c9e3fd941407ad1553259fb2e30b5f057bf"
+    },
+    "attr": {
+      "type": "archive",
+      "name": "attr-2.5.2.tar.gz",
+      "sha256": "39bf67452fa41d0948c2197601053f48b3d78a029389734332a6309a680c6c87"
+    },
+    "brotli": {
+      "type": "archive",
+      "name": "google-brotli-go-brotli-v1.2.1-0-gdb24a98.tar.gz",
+      "sha256": "faa6efa5345f2a63076190f5f6e63454a881fa03696271775a30d59de7cd6e91"
+    },
+    "bzip2": {
+      "type": "archive",
+      "name": "bzip2-1.0.8.tar.gz",
+      "sha256": "ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269"
+    },
+    "curl": {
+      "type": "archive",
+      "name": "curl-8.23.0.tar.xz",
+      "sha256": "8dadd7d2536a314f982ad05a651b713f426bf7d02cc2c76cffb9796f2218e6c5"
+    },
+    "ext-zip": {
+      "type": "archive",
+      "name": "ext-zip.tgz",
+      "sha256": "9fab1f8653d40249bd433ad2c3ca02431f9a5ab06d50f988c8ec53fc6a846eef"
+    },
+    "frankenphp": {
+      "type": "archive",
+      "name": "php-frankenphp-caddy-v1.14.0-0-g30c6bb7.tar.gz",
+      "sha256": "6516f08125f0a71d07c612314af23b3a23d6a79d1af8d3696d2baae06de7c559"
+    },
+    "freetype": {
+      "type": "archive",
+      "name": "freetype-freetype-VER-2-15-0-0-g37515cf.tar.gz",
+      "sha256": "144a7ca44e8ff1de2cdfd559a3ab9551668e98df42ccc0bef04f152f8b270b64"
+    },
+    "gettext": {
+      "type": "archive",
+      "name": "gettext-1.0.tar.xz",
+      "sha256": "71132a3fb71e68245b8f2ac4e9e97137d3e5c02f415636eb508ae607bc01add7"
+    },
+    "gmp": {
+      "type": "archive",
+      "name": "gmp-6.3.0.tar.xz",
+      "sha256": "a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898"
+    },
+    "icu": {
+      "type": "archive",
+      "name": "icu4c-77_1-src.tgz",
+      "sha256": "588e431f77327c39031ffbb8843c0e3bc122c211374485fa87dc5f3faff24061"
+    },
+    "igbinary": {
+      "type": "archive",
+      "name": "igbinary.tgz",
+      "sha256": "91da821443db125282a6aea039f24588dd28ff5d71e8187f6ecc41165bceafbc"
+    },
+    "krb5": {
+      "type": "archive",
+      "name": "krb5-1.22.2.tar.gz",
+      "sha256": "3243ffbc8ea4d4ac22ddc7dd2a1dc54c57874c40648b60ff97009763554eaf13"
+    },
+    "ldap": {
+      "type": "archive",
+      "name": "openldap-2.7.2.tgz",
+      "sha256": "aad731aa22118ff327b9b4ddfc4b6f18ef9476586205da88a532e90940b523d2"
+    },
+    "libacl": {
+      "type": "archive",
+      "name": "acl-2.3.2.tar.gz",
+      "sha256": "5f2bdbad629707aa7d85c623f994aa8a1d2dec55a73de5205bac0bf6058a2f7c"
+    },
+    "libaom": {
+      "type": "git",
+      "name": "libaom",
+      "sha256": "3614873001e842f9c48cc85f8c12e547d27829414f7e777b4bd4370ae3957daa"
+    },
+    "libavif": {
+      "type": "archive",
+      "name": "AOMediaCodec-libavif-v1.4.2-0-gc5240fc.tar.gz",
+      "sha256": "e7f11216722ef8b17dcf0186d6be1739be634bbe73312b16a025aa53c08c3d7a"
+    },
+    "libcares": {
+      "type": "archive",
+      "name": "c-ares-1.34.9.tar.gz",
+      "sha256": "9364b70a12eb59a06830fb488d9357f90100dff0d98b23ea3593a183d43e6f2f"
+    },
+    "libedit": {
+      "type": "archive",
+      "name": "libedit-20260512-3.1.tar.gz",
+      "sha256": "432d5e7ea8b0116dd39f2eca7bc11d0eed77faa6b77ea526ace89907c23ea4a0"
+    },
+    "libiconv": {
+      "type": "archive",
+      "name": "libiconv-1.19.1.tar.gz",
+      "sha256": "9a06844846d664d7122161700c10a64480d7c7bcead3091925a785b38c91edab"
+    },
+    "libidn2": {
+      "type": "archive",
+      "name": "libidn2-2.3.8.tar.gz",
+      "sha256": "f557911bf6171621e1f72ff35f5b1825bb35b52ed45325dcdee931e5d3c0787a"
+    },
+    "libjpeg": {
+      "type": "archive",
+      "name": "libjpeg-turbo-libjpeg-turbo-3.2.1-0-g7b49937.tar.gz",
+      "sha256": "f9d7fad5a49dcab5270cccd2a75f567e21cbc5fcea408671034f083651874c86"
+    },
+    "liblz4": {
+      "type": "archive",
+      "name": "lz4-1.11.1.tar.gz",
+      "sha256": "683fed08a844ad012196381e40badf80c0bbe4962959761416d41c9e67d77ec7"
+    },
+    "libpng": {
+      "type": "archive",
+      "name": "pnggroup-libpng-v1.6.59-0-gcd952f4.tar.gz",
+      "sha256": "56de06e936077ac9282b0de7e4510a18245b8dfbc305fbf94c272258f7c4b0d4"
+    },
+    "libsodium": {
+      "type": "archive",
+      "name": "libsodium-1.0.22.tar.gz",
+      "sha256": "adbdd8f16149e81ac6078a03aca6fc03b592b89ef7b5ed83841c086191be3349"
+    },
+    "libssh2": {
+      "type": "archive",
+      "name": "libssh2-1.11.1.tar.gz",
+      "sha256": "d9ec76cbe34db98eec3539fe2c899d26b0c837cb3eb466a56b0f109cabf658f7"
+    },
+    "libunistring": {
+      "type": "archive",
+      "name": "libunistring-1.5.tar.gz",
+      "sha256": "5b0ecd46cbf225375f20ab4056197e66a7ac590e2684c069af407ae3383c9d81"
+    },
+    "libwebp": {
+      "type": "archive",
+      "name": "webmproject-libwebp-v1.6.0-0-g4fa2191.tar.gz",
+      "sha256": "48c7b41fc22d53c5a8dd969fd0c5b302987a654df8c9f0e7e353c896703ff81c"
+    },
+    "libxml2": {
+      "type": "archive",
+      "name": "GNOME-libxml2-v2.15.4-0-g9649899.tar.gz",
+      "sha256": "e6a7327f851b2798f228f6a0cf8cceb67e5ff11f7b01c07430c8bdfb33edc01c"
+    },
+    "libxslt": {
+      "type": "archive",
+      "name": "libxslt-1.1.45.tar.xz",
+      "sha256": "9acfe68419c4d06a45c550321b3212762d92f41465062ca4ea19e632ee5d216e"
+    },
+    "libzip": {
+      "type": "archive",
+      "name": "libzip-1.12.1.tar.xz",
+      "sha256": "c40062022a1963c80573d48f6070792297cecd7c6bffe3aefcac0d8b9bee8913"
+    },
+    "micro": {
+      "type": "git",
+      "name": "micro",
+      "sha256": "923dc5c4a204549182b12de4627338e4aa7d39fe883c9c631676e0059541809a"
+    },
+    "msgpack": {
+      "type": "archive",
+      "name": "msgpack.tgz",
+      "sha256": "e30be355ab79aaea4568692fbd6073fd7c7f50ea8d3cf12edce40fc0c921d868"
+    },
+    "ncurses": {
+      "type": "archive",
+      "name": "ncurses-6.6.tar.gz",
+      "sha256": "355b4cbbed880b0381a04c46617b7656e362585d52e9cf84a67e2009b749ff11"
+    },
+    "nghttp2": {
+      "type": "archive",
+      "name": "nghttp2-1.71.0.tar.xz",
+      "sha256": "c0f55121d88650e4b9227aec28cebaf664d2417ca60fe70be0f8d38829f52116"
+    },
+    "nghttp3": {
+      "type": "archive",
+      "name": "nghttp3-1.19.0.tar.xz",
+      "sha256": "228e17f5cc3d4de7bfced9912bd09de30e7f45741cc47503cf88d3fa9209e155"
+    },
+    "ngtcp2": {
+      "type": "archive",
+      "name": "ngtcp2-1.26.0.tar.xz",
+      "sha256": "7804aa0fa1c39942ba322a90805824c37231f7675b08d0c3cc4332858a7b085e"
+    },
+    "openssl": {
+      "type": "archive",
+      "name": "openssl-3.6.5.tar.gz",
+      "sha256": "a2157c2830efdec3788939b00c9b0638306d3f0bbb76dc4832ee503bb397df98"
+    },
+    "pcov": {
+      "type": "archive",
+      "name": "pcov.tgz",
+      "sha256": "23255c8c9335a9636ccb743f5302436a97a582a0bbde9869485be911bbc15da8"
+    },
+    "postgresql": {
+      "type": "archive",
+      "name": "postgres-postgres-REL_18_7-0-gf5c41f6.tar.gz",
+      "sha256": "b67c45c4d1fed213e0bc61ea0c353c52e48c01020cc815c8f42e853a57aa813b"
+    },
+    "redis": {
+      "type": "archive",
+      "name": "redis.tgz",
+      "sha256": "876434dff29603c83e33cb69bbcfdcff1f7846d968a396436b6c026cc15fc492"
+    },
+    "sqlite": {
+      "type": "archive",
+      "name": "sqlite-autoconf-3450200.tar.gz",
+      "sha256": "bc9067442eedf3dd39989b5c5cfbfff37ae66cc9c99274e0c3052dc4d4a8f6ae"
+    },
+    "watcher": {
+      "type": "archive",
+      "name": "e-dant-watcher-release-0.14.5-0-g06f84a1.tar.gz",
+      "sha256": "7098217c78e6deb6ab92bc7b469e3d016ae82185bb2ff6cb2b7531ae4ef34e43"
+    },
+    "xdebug": {
+      "type": "archive",
+      "name": "3.5.3.tar.gz",
+      "sha256": "954e56021668121ecc50b92d2ad1ce945f22ecf81ffc5bb5835219485b12ef5f"
+    },
+    "xz": {
+      "type": "archive",
+      "name": "xz-5.8.4.tar.xz",
+      "sha256": "4ce24038fd4221e0d13bc1a2de7a4db56e90b92b3bf75321f6c14be73f65de4b"
+    },
+    "zlib": {
+      "type": "archive",
+      "name": "zlib-1.4.tar.gz",
+      "sha256": "02dd159783677a749c04adbdd02b55b8a2bcc7e054f51b76b549199a916ad584"
+    },
+    "zstd": {
+      "type": "archive",
+      "name": "zstd-1.6.0.tar.gz",
+      "sha256": "2ba599ae2a257976278e7e71e998433a387bfd18aa7b78678229fd5d84f5e9b8"
+    }
+  }
+}

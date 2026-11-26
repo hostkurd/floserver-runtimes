@@ -1,0 +1,101 @@
+name: nginx
+
+# Builds nginx for FloServer and publishes it as a GitHub Release
+# (tag nginx-<version>-<build>). The Publisher's Updates window picks the
+# release up from here (D36.3).
+on:
+  workflow_dispatch:
+    inputs:
+      version: {description: "nginx version (in sources.json)", required: true, default: "1.30.6"}
+      openssl: {description: "OpenSSL version (in sources.json)", required: true, default: "3.5.9"}
+      pcre2: {description: "PCRE2 version (in sources.json)", required: true, default: "10.49"}
+      zlib: {description: "zlib version (in sources.json)", required: true, default: "1.3.2"}
+      build: {description: "Build number (raise it to rebuild the same version)", required: true, default: "1"}
+      platforms:
+        description: Platforms
+        type: choice
+        options: [linux-x64, macos-arm64, both]
+        default: linux-x64
+      publish: {description: "Publish a release (off: build and test only)", type: boolean, default: true}
+  pull_request:
+    paths: ["scripts/build-nginx.sh", "scripts/smoke-nginx.sh", "scripts/package.sh", "scripts/fetch.py", "sources.json", ".github/workflows/nginx.yml", ".github/scripts/**"]
+
+permissions:
+  contents: read
+
+# Inputs reach scripts only through the environment, checked first.
+env:
+  V: ${{ inputs.version || '1.30.6' }}
+  OPENSSL: ${{ inputs.openssl || '3.5.9' }}
+  PCRE2: ${{ inputs.pcre2 || '10.49' }}
+  ZLIB: ${{ inputs.zlib || '1.3.2' }}
+  BUILD: ${{ inputs.build || '1' }}
+  PLATFORMS: ${{ inputs.platforms || 'linux-x64' }}
+
+jobs:
+  matrix:
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.m.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - id: m
+        run: |
+          .github/scripts/check-inputs.sh version "$V" version "$OPENSSL" version "$PCRE2" version "$ZLIB" build "$BUILD"
+          echo "matrix=$(.github/scripts/matrix.sh "$PLATFORMS")" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: matrix
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.matrix.outputs.matrix) }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    env:
+      PLATFORM: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Build
+        run: scripts/build-nginx.sh "$V" "$OPENSSL" "$PCRE2" "$ZLIB" "$PLATFORM" dist
+      - name: Smoke test
+        run: scripts/smoke-nginx.sh "dist/nginx-$V" "$V"
+      - name: Package
+        run: scripts/package.sh "dist/nginx-$V" "$PLATFORM" out
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: nginx-${{ matrix.platform }}
+          path: out/*
+          if-no-files-found: error
+
+  release:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with: {path: out, merge-multiple: true}
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          TAG="nginx-$V-$BUILD"
+          {
+            echo "nginx $V for FloServer, build $BUILD."
+            echo
+            echo "Built with OpenSSL $OPENSSL, PCRE2 $PCRE2 and zlib $ZLIB (static) by workflow run $RUN_URL from commit $GITHUB_SHA."
+            echo
+            echo '```'
+            cat out/*.sha256
+            echo '```'
+          } > notes.md
+          gh release create "$TAG" out/* --repo "$GITHUB_REPOSITORY" --title "nginx $V (build $BUILD)" --notes-file notes.md --target "$GITHUB_SHA"
