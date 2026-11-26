@@ -13,8 +13,10 @@ V=$("$DIR/nginx" -v 2>&1)
 [ "$V" = "nginx version: nginx/$WANT" ] || fail "nginx -v says: $V"
 INFO=$("$DIR/nginx" -V 2>&1)
 case "$INFO" in *"built with OpenSSL"*) ;; *) fail "nginx -V doesn't name OpenSSL" ;; esac
-# Nothing may point into the build machine's temporary folders.
-LEAKS=$(strings "$DIR/nginx" | grep -E '^/(tmp|private/var|var/folders|Users|home/runner)/' || true)
+# Nothing may point into the build machine's folders. nginx's own record of
+# its configure arguments (what `nginx -V` prints) is text only, and left out.
+CONFIGURE=$(printf '%s\n' "$INFO" | sed -n 's/^configure arguments: //p')
+LEAKS=$(strings "$DIR/nginx" | grep -Fvx -- "configure arguments: $CONFIGURE" | grep -E '/(tmp|private/var|var/folders|Users|home/runner)/' || true)
 [ -z "$LEAKS" ] || fail "build paths compiled in: $(echo "$LEAKS" | head -3 | tr '\n' ' ')"
 for f in mime.types fastcgi_params fastcgi.conf; do [ -f "$DIR/conf/$f" ] || fail "conf/$f missing"; done
 [ -f "$DIR/floserver-build.json" ] || fail "floserver-build.json missing"

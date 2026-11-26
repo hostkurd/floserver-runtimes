@@ -137,7 +137,11 @@ jobs:
           BRANCH="php-sources-lock-$V-${{ github.run_id }}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -b "$BRANCH"
+          # The pull request holds the lock alone, on top of main.
+          cp php/sources.lock.json "$RUNNER_TEMP/lock.json"
+          git fetch --quiet origin main
+          git checkout --quiet -b "$BRANCH" origin/main
+          cp "$RUNNER_TEMP/lock.json" php/sources.lock.json
           git add php/sources.lock.json
           git commit -m "PHP sources lock for $V ($PLATFORMS)"
           git push origin "$BRANCH"
@@ -150,7 +154,11 @@ jobs:
             git diff HEAD~1 -- php/sources.lock.json | tail -n +5
             echo '```'
           } > body.md
-          gh pr create --base main --head "$BRANCH" --title "PHP sources lock for $V" --body-file body.md
+          # A pull request made with this token starts no CI of its own: after
+          # merging, the publishing run checks every source against it anyway.
+          if ! gh pr create --base main --head "$BRANCH" --title "PHP sources lock for $V" --body-file body.md; then
+            echo "::warning title=sources lock::Couldn't open the pull request (Settings → Actions → General → \"Allow GitHub Actions to create and approve pull requests\" is off?). Open it by hand from branch $BRANCH."
+          fi
 
   release:
     if: github.event_name == 'workflow_dispatch' && inputs.publish && needs.matrix.outputs.lock_mode == 'check'

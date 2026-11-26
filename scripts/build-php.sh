@@ -76,6 +76,12 @@ fi
 # left by another install is never read.
 "${CMD[@]}" build "$STATIC" --build-shared="$SHARED" --build-cli --build-cgi \
   --with-config-file-path=/etc/floserver-php-none --with-config-file-scan-dir=
+# Anything the build step fetched on its own is checked the same way.
+if [ "$LOCK_MODE" = update ]; then
+  python3 "$HERE/check-spc-lock.py" update "$SPC" "$PHP" "$OUT/sources.lock.json"
+else
+  python3 "$HERE/check-spc-lock.py" check "$SPC" "$PHP"
+fi
 "${CMD[@]}" dump-license --for-extensions="$STATIC,$SHARED" --dump-dir=buildroot/floserver-licenses
 
 DEST="$OUT/php-$PHP"

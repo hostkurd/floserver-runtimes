@@ -41,6 +41,12 @@ def tree_sha256(root: str) -> str:
     h = hashlib.sha256()
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = sorted(d for d in dirnames if d != ".git")
+        for name in list(dirnames):  # links to folders: recorded, not followed
+            path = os.path.join(dirpath, name)
+            if os.path.islink(path):
+                rel = os.path.relpath(path, root).replace(os.sep, "/")
+                h.update(f"L {rel} {os.readlink(path)}\n".encode())
+                dirnames.remove(name)
         for name in sorted(filenames):
             path = os.path.join(dirpath, name)
             rel = os.path.relpath(path, root).replace(os.sep, "/")
