@@ -59,7 +59,13 @@ esac
 
 # Sources only (no pre-built libraries: everything is compiled here), then
 # every downloaded file checked before anything is built from it.
-"${CMD[@]}" download --with-php="$PHP" --for-extensions="$STATIC,$SHARED" --ignore-cache-sources=php-src
+PINNED=()
+while read -r name url; do
+  case "$name" in ''|'#'*) continue ;; esac
+  case "$url" in https://*) ;; *) echo "php/pinned-sources.txt: $name needs an https address" >&2; exit 2 ;; esac
+  PINNED+=(--custom-url="$name:$url")
+done < "$ROOT/php/pinned-sources.txt"
+"${CMD[@]}" download --with-php="$PHP" --for-extensions="$STATIC,$SHARED" --ignore-cache-sources=php-src ${PINNED[@]+"${PINNED[@]}"}
 if [ "$LOCK_MODE" = update ]; then
   python3 "$HERE/check-spc-lock.py" update "$SPC" "$PHP" "$OUT/sources.lock.json"
 else
@@ -81,7 +87,15 @@ for so in $(echo "$SHARED" | tr ',' ' '); do
 done
 cp -R buildroot/floserver-licenses/. "$DEST/licenses/"
 
-python3 - "$DEST/floserver-build.json" "$STATIC" "$SHARED" <<PY
+# Each shared extension's own version, from PHP itself.
+SHARED_VERSIONS=""
+for so in $(echo "$SHARED" | tr ',' ' '); do
+  load="-d extension=$DEST/ext/$so.so"
+  [ "$so" = xdebug ] && load="-d zend_extension=$DEST/ext/$so.so"
+  v=$("$DEST/bin/php" -n $load -r "echo phpversion('$so');" 2>/dev/null || true)
+  SHARED_VERSIONS="$SHARED_VERSIONS$so=$v,"
+done
+python3 - "$DEST/floserver-build.json" "$STATIC" "$SHARED_VERSIONS" <<PY
 import json, sys
 json.dump({
     "schema": 1,
@@ -90,7 +104,7 @@ json.dump({
     "platform": "$PLATFORM",
     "variant": "nts",
     "built_in_extensions": sorted(sys.argv[2].split(",")),
-    "shared_extensions": sorted(sys.argv[3].split(",")),
+    "shared_extensions": dict(sorted(kv.split("=", 1) for kv in sys.argv[3].split(",") if kv)),
     "built_with": {"static-php-cli": "$SPC_VERSION ($SPC_COMMIT)"},
     "sources_lock": json.load(open("$ROOT/php/sources.lock.json"))["sources"] if "$LOCK_MODE" == "check" else None,
     "source": "https://github.com/hostkurd/floserver-runtimes",

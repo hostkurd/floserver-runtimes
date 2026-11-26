@@ -1,0 +1,5 @@
+# Sources given to static-php-cli by address instead of "the newest
+# release", one per line: <source name> <https address>. Their hashes are
+# still checked against sources.lock.json.
+# Xdebug: static-php-cli would take a pre-release (3.6.0alpha1, 26 Nov 2026).
+xdebug https://github.com/xdebug/xdebug/archive/refs/tags/3.5.3.tar.gz
