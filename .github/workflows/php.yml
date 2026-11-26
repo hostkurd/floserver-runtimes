@@ -1,0 +1,101 @@
+name: php
+
+# Builds PHP (cli + cgi) for FloServer with static-php-cli and publishes it as
+# a GitHub Release (tag php-<version>-<build>). The Publisher's Updates
+# window picks the release up from here (D36.3).
+on:
+  workflow_dispatch:
+    inputs:
+      version: {description: "PHP version, e.g. 8.5.12", required: true, default: "8.5.12"}
+      build: {description: "Build number (raise it to rebuild the same version)", required: true, default: "1"}
+      platforms:
+        description: Platforms
+        type: choice
+        options: [linux-x64, macos-arm64, both]
+        default: linux-x64
+      publish: {description: "Publish a release (off: build and test only)", type: boolean, default: true}
+  pull_request:
+    paths: ["scripts/build-php.sh", "scripts/smoke-php.sh", "scripts/fcgi_get.py", "scripts/package.sh", "php/**", ".github/workflows/php.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  matrix:
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.m.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: m
+        run: echo "matrix=$(.github/scripts/matrix.sh '${{ inputs.platforms || 'linux-x64' }}')" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: matrix
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.matrix.outputs.matrix) }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 180
+    env:
+      V: ${{ inputs.version || '8.5.12' }}
+      # static-php-cli downloads its sources from GitHub with this token
+      # (fewer rate-limit failures).
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up PHP and Composer (macOS)
+        if: startsWith(matrix.platform, 'macos-')
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          tools: composer
+          extensions: curl, openssl, mbstring, tokenizer, zlib
+          ini-values: memory_limit=-1
+      - name: Build
+        run: scripts/build-php.sh "$V" "${{ matrix.platform }}" dist
+      - name: Show the build log on failure
+        if: failure()
+        run: |
+          for f in dist/.spc/log/*.log; do
+            [ -f "$f" ] || continue
+            tail -40 "$f" | while IFS= read -r line; do echo "::error title=$(basename "$f")::${line}"; done
+          done
+      - name: Smoke test
+        run: scripts/smoke-php.sh "dist/php-$V"
+      - name: Package
+        run: scripts/package.sh "dist/php-$V" "${{ matrix.platform }}" out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: php-${{ matrix.platform }}
+          path: out/*
+          if-no-files-found: error
+
+  release:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {path: out, merge-multiple: true}
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: php-${{ inputs.version }}-${{ inputs.build }}
+        run: |
+          {
+            echo "PHP ${{ inputs.version }} (NTS, cli + cgi) for FloServer, build ${{ inputs.build }}."
+            echo
+            echo "Built in: $(grep -v '^#' php/extensions.txt | tr -s ' \n' ' ')"
+            echo "Shared (ext/): $(grep -v '^#' php/shared-extensions.txt | tr -s ' \n' ' ')"
+            echo
+            echo "Built with static-php-cli $(python3 -c 'import json;d=json.load(open("sources.json"))["static-php-cli"];v=sorted(d)[-1];print(v, d[v]["commit"])') by workflow run ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }} from commit ${{ github.sha }}."
+            echo
+            echo '```'
+            cat out/*.sha256
+            echo '```'
+          } > notes.md
+          gh release create "$TAG" out/* --title "PHP ${{ inputs.version }} (build ${{ inputs.build }})" --notes-file notes.md --target "${{ github.sha }}"

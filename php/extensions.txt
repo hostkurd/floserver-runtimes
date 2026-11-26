@@ -1,0 +1,6 @@
+# Built into every FloServer PHP on Linux and macOS: always on (D36.3).
+# opcache is added for PHP 8.2-8.4 (part of PHP itself from 8.5).
+bcmath ctype curl dom exif fileinfo filter gd iconv intl mbstring mysqli
+mysqlnd openssl pcntl pdo pdo_mysql pdo_pgsql pdo_sqlite pgsql phar posix
+readline session simplexml sockets sodium sqlite3 tokenizer xml xmlreader
+xmlwriter zip zlib
