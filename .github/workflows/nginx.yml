@@ -6,7 +6,7 @@ name: nginx
 on:
   workflow_dispatch:
     inputs:
-      version: {description: "nginx version (in sources.json)", required: true, default: "1.30.6"}
+      version: {description: "nginx version (in sources.json)", required: true, default: "1.30.8"}
       openssl: {description: "OpenSSL version (in sources.json)", required: true, default: "3.5.9"}
       pcre2: {description: "PCRE2 version (in sources.json)", required: true, default: "10.49"}
       zlib: {description: "zlib version (in sources.json)", required: true, default: "1.3.2"}
@@ -25,7 +25,7 @@ permissions:
 
 # Inputs reach scripts only through the environment, checked first.
 env:
-  V: ${{ inputs.version || '1.30.6' }}
+  V: ${{ inputs.version || '1.30.8' }}
   OPENSSL: ${{ inputs.openssl || '3.5.9' }}
   PCRE2: ${{ inputs.pcre2 || '10.49' }}
   ZLIB: ${{ inputs.zlib || '1.3.2' }}

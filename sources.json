@@ -4,6 +4,10 @@
     "1.30.6": {
       "url": "https://github.com/nginx/nginx/releases/download/release-1.30.6/nginx-1.30.6.tar.gz",
       "sha256": "3cf46f5ed7504d460125866b7bea99fb357f31d887e2e63b35503310e9b8b6c8"
+    },
+    "1.30.8": {
+      "url": "https://github.com/nginx/nginx/releases/download/release-1.30.8/nginx-1.30.8.tar.gz",
+      "sha256": "f867314ada32e717b949930859656c48a72dc6657aec598db58af2f98a40e1c1"
     }
   },
   "openssl": {
